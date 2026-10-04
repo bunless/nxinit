@@ -1,5 +1,5 @@
 {
-  description = "nxinit development environment";
+  description = "bunless Hare development environment";
 
   inputs.nixpkgs.url = "github:Nixos/nixpkgs/nixos-unstable";
 
@@ -13,6 +13,15 @@
     ];
     forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
   in {
+    packages = forAllSystems (
+      system: let
+        pkgs = import nixpkgs {inherit system;};
+      in {
+        default = pkgs.callPackage ./nix/package.nix {};
+        nxinit = self.packages.${system}.default;
+      }
+    );
+
     devShells = forAllSystems (
       system: let
         pkgs = import nixpkgs {inherit system;};
@@ -23,12 +32,13 @@
             harec
             qbe
             haredoc
+            hare-lsp
           ];
 
           HAREPATH = "${pkgs.hare}/src/hare/stdlib";
 
           shellHook = ''
-            echo "launched nxinit development environment"
+            echo "entering bunless Hare development environment"
             hare version
           '';
         };
