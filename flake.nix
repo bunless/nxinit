@@ -25,6 +25,8 @@
             haredoc
           ];
 
+          HAREPATH = "${pkgs.hare}/src/hare/stdlib";
+
           shellHook = ''
             echo "launched nxinit development environment"
             hare version
