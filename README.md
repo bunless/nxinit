@@ -1,2 +1,2 @@
 # nxinit
-A minimal init system and service supervisor for Linux.
+A minimal init system and service supervisor(not yet) for Linux.
