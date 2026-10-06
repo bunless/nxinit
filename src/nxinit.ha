@@ -13,23 +13,23 @@ const RB_AUTOBOOT: u64 = 0x01234567;
 const RB_POWER_OFF: u64 = 0x4321fedc;
 
 fn reboot() void = {
-    rt::syscall(
-        rt::SYS_reboot,
-        REBOOT_MAGIC1,
-        REBOOT_MAGIC2,
-        RB_AUTOBOOT,
-        0,
-    );
+  rt::syscall(
+    rt::SYS_reboot,
+    REBOOT_MAGIC1,
+    REBOOT_MAGIC2,
+    RB_AUTOBOOT,
+    0,
+  );
 };
 
 fn poweroff() void = {
-    rt::syscall(
-        rt::SYS_reboot,
-        REBOOT_MAGIC1,
-        REBOOT_MAGIC2,
-        RB_POWER_OFF,
-        0,
-    );
+  rt::syscall(
+    rt::SYS_reboot,
+    REBOOT_MAGIC1,
+    REBOOT_MAGIC2,
+    RB_POWER_OFF,
+    0,
+  );
 };
 
 //temp fix of exec::wait
@@ -63,10 +63,10 @@ export fn main() void = {
 
   //set sigset and mask it
   let set: signal::sigset = signal::newsigset(
-      signal::sig::CHLD,
-      signal::sig::ALRM,
-      signal::sig::USR1,
-      signal::sig::USR2,
+    signal::sig::CHLD,
+    signal::sig::ALRM,
+    signal::sig::USR1,
+    signal::sig::USR2,
   );
   signal::setprocmask(signal::how::BLOCK, &set);
 
@@ -102,16 +102,14 @@ fn spawn(cmd: *exec::command, blocked_set: signal::sigset) void = {
   match (exec::fork()) {
     case exec::process => yield;
 
-    case void => {
-        signal::setprocmask(signal::how::UNBLOCK, &blocked_set);
-        unix::setsid();
-        let err = exec::exec(cmd);
-        fmt::fatalf("exec failed: {}", exec::strerror(err));
-    };
+    case void =>
+      signal::setprocmask(signal::how::UNBLOCK, &blocked_set);
+      unix::setsid();
+      let err = exec::exec(cmd);
+      fmt::fatalf("exec failed: {}", exec::strerror(err));
 
-    case exec::error => {
-        fmt::println("cant spawn a process")!;
-    };
+    case exec::error =>
+      fmt::println("cant spawn a process")!;
   };
 };
 
@@ -124,14 +122,14 @@ fn reap() void = {
 		  case let err: rt::errno =>
 				if (err == rt::ECHILD) {
 				  return;
-						};
+				};
 				fmt::printfln("wait4 error: {}", rt::strerror(err))!;
 				return;
 
 			case let pid: rt::pid_t =>
 			  switch (pid) {
 			    case 0 => return;
-							case => yield;
+					case => yield;
 				};
 		};
 	};
