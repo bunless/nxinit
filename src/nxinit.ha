@@ -6,31 +6,7 @@ use os::exec;
 use fs;
 use rt;
 
-//magic!
-const REBOOT_MAGIC1: u64 = 0xfee1dead;
-const REBOOT_MAGIC2: u64 = 0x28121969;
-const RB_AUTOBOOT: u64 = 0x01234567;
-const RB_POWER_OFF: u64 = 0x4321fedc;
-
-fn reboot() void = {
-  rt::syscall(
-    rt::SYS_reboot,
-    REBOOT_MAGIC1,
-    REBOOT_MAGIC2,
-    RB_AUTOBOOT,
-    0,
-  );
-};
-
-fn poweroff() void = {
-  rt::syscall(
-    rt::SYS_reboot,
-    REBOOT_MAGIC1,
-    REBOOT_MAGIC2,
-    RB_POWER_OFF,
-    0,
-  );
-};
+use src::power;
 
 //temp fix of exec::wait
 fn sigwait(set: *signal::sigset) (signal::sig | rt::errno) = {
@@ -64,7 +40,6 @@ export fn main() void = {
   //set sigset and mask it
   let set: signal::sigset = signal::newsigset(
     signal::sig::CHLD,
-    signal::sig::ALRM,
     signal::sig::USR1,
     signal::sig::USR2,
   );
@@ -76,17 +51,13 @@ export fn main() void = {
 
   //main loop
   for (true) {
-    //alarm for reap
-    signal::alarm(30);
-
     //error handling of the permanent fix UHH
     match (sigwait(&set)) {
       case let sig: signal::sig =>
         switch (sig) {
           case signal::sig::CHLD => reap();
-          case signal::sig::ALRM => reap();
-          case signal::sig::USR1 => reboot();
-          case signal::sig::USR2 => poweroff();
+          case signal::sig::USR1 => power::reboot();
+          case signal::sig::USR2 => power::poweroff();
           case => yield;
         };
 
