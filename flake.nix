@@ -39,7 +39,6 @@
               harec
               qbe
               haredoc
-              hare-lsp
             ];
 
             HAREPATH = "${pkgs.hare}/src/hare/stdlib";
