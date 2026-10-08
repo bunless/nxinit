@@ -1,26 +1,31 @@
 use fmt;
 use unix::signal;
 use os::exec;
+use errors;
 
 use src::processes;
 
 export fn start(unit: *unit, blocked_set: signal::sigset) void = {
 	switch (unit.kind) {
-	  //task can only be CREATED, STARTING, FINISHED or FAILED
+	  //task can only be CREATED, STARTING, RUNNING, FINISHED or FAILED
 	  case kind::TASK =>
 			unit.state = state::STARTING;
+
 			match (processes::spawn(&exec::cmd(unit.cmd)!, blocked_set)) {
-			  case => unit.state = state::FINISHED;
-				case exec::error => unit.state = state::FAILED;
+			  case let proc: exec::process =>
+					unit.state = state::RUNNING;
+					unit.process = proc;
+				case exec::error =>
+				  unit.state = state::FAILED;
 			};
 
 	  //service can only be CREATED, STARTING, RUNNING, FINISHING, FINISHED or FAILED
 	  case kind::SERVICE =>
 			unit.state = state::STARTING;
 			match (processes::spawn(&exec::cmd(unit.cmd)!, blocked_set)) {
-			  case let pid: int =>
+			  case let proc: exec::process =>
 					unit.state = state::RUNNING;
-					unit.pid = pid;
+					unit.process = proc;
 				case exec::error =>
 				  unit.state = state::FAILED;
 			};
@@ -35,13 +40,26 @@ export fn start(unit: *unit, blocked_set: signal::sigset) void = {
 export fn finish(unit: *unit) void = {
 	switch (unit.kind) {
 	  case kind::TASK =>
-			// no need to finish tasks
 			yield;
-	  case kind::SERVICE =>
-			unit.state = state::FINISHING;
-			//TODO: terminate unit.pid
-			//TODO: wait for process
-			unit.state = state::FINISHED;
+
+		case kind::SERVICE =>
+		  unit.state = state::FINISHING;
+
+			match (exec::kill(unit.process)) {
+			  case =>
+					yield;
+				case let err: errors::error =>
+				  fmt::printfln("finish error: {}", errors::strerror(err))!;
+					unit.state = state::FAILED;
+				  return;
+			};
+		  match (exec::wait(&unit.process)) {
+				case let st: exec::status => unit.state = state::FINISHED;
+				case let err: errors::error =>
+				  unit.state = state::FAILED;
+				  return;
+			};
+
 	  case kind::MILESTONE =>
 			unit.state = state::FINISHING;
 			//TODO: deactivate milestone dependencies

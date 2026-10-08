@@ -54,7 +54,12 @@ export fn main() void = {
   let test_task = units::create_unit(units::kind::TASK, "ls", "ls");
   units::start(&test_task, set);
 
-  fmt::printfln("pid: {}", test_service.pid)!;
+  let test_service2 = units::create_unit(units::kind::SERVICE, "sh", "/bin/sh");
+  units::start(&test_service2, set);
+
+  fmt::printfln("test_service pid: {}", test_service2.process: int)!;
+  units::finish(&test_service2);
+  fmt::printfln("test_service pid: {}", test_service2.process: int)!;
 
   //main loopidk
   for (true) {

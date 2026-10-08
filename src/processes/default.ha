@@ -4,11 +4,11 @@ use unix::signal;
 use fmt;
 use rt;
 
-export fn spawn(cmd: *exec::command, blocked_set: signal::sigset) (int | exec::error) = {
+export fn spawn(cmd: *exec::command, blocked_set: signal::sigset) (exec::process | exec::error) = {
   //try to fork :> and handle errors if they are present
   match (exec::fork()) {
-    case let pid: exec::process =>
-      return pid;
+    case let proc: exec::process =>
+      return proc;
 
     case void =>
       signal::setprocmask(signal::how::UNBLOCK, &blocked_set);

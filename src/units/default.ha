@@ -1,3 +1,5 @@
+use os::exec;
+
 export type kind = enum {
   TASK,
   SERVICE,
@@ -17,7 +19,7 @@ export type unit = struct {
   kind: kind,
   name: str,
   cmd: str,
-  pid: int,
+  process: exec::process,
   state: state,
 };
 
@@ -26,7 +28,7 @@ export fn create_unit(unit_kind: kind, unit_name: str, unit_cmd: str) unit = {
     kind = unit_kind,
     name = unit_name,
     cmd = unit_cmd,
-    pid = -1,
+    process = -1,
     state = state::CREATED,
 	};
 };
