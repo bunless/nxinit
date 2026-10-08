@@ -7,6 +7,8 @@ use fs;
 use rt;
 
 use src::power;
+use src::processes;
+use src::units;
 
 //temp fix of exec::wait
 fn sigwait(set: *signal::sigset) (signal::sig | rt::errno) = {
@@ -45,17 +47,22 @@ export fn main() void = {
   );
   signal::setprocmask(signal::how::BLOCK, &set);
 
-  //spawn commands
-  let cmd = exec::cmd("/bin/sh")!;
-  spawn(&cmd, set);
+  //decrale first task and service
+  let test_service = units::create_unit(units::kind::SERVICE, "sh", "/bin/sh");
+  units::start(&test_service, set);
 
-  //main loop
+  let test_task = units::create_unit(units::kind::TASK, "ls", "ls");
+  units::start(&test_task, set);
+
+  fmt::printfln("pid: {}", test_service.pid)!;
+
+  //main loopidk
   for (true) {
     //error handling of the permanent fix UHH
     match (sigwait(&set)) {
       case let sig: signal::sig =>
         switch (sig) {
-          case signal::sig::CHLD => reap();
+          case signal::sig::CHLD => processes::reap();
           case signal::sig::USR1 => power::reboot();
           case signal::sig::USR2 => power::poweroff();
           case => yield;
@@ -66,42 +73,4 @@ export fn main() void = {
         return;
     };
   };
-};
-
-fn spawn(cmd: *exec::command, blocked_set: signal::sigset) void = {
-  //try to fork :> and handle errors if they are present
-  match (exec::fork()) {
-    case exec::process => yield;
-
-    case void =>
-      signal::setprocmask(signal::how::UNBLOCK, &blocked_set);
-      unix::setsid();
-      let err = exec::exec(cmd);
-      fmt::fatalf("exec failed: {}", exec::strerror(err));
-
-    case exec::error =>
-      fmt::println("cant spawn a process")!;
-  };
-};
-
-fn reap() void = {
-	let status: int = 0;
-
-	for (true) {
-	  //another temp. fix of exec::peekany()
-		match (rt::wait4(-1, &status, rt::WNOHANG, null)) {
-		  case let err: rt::errno =>
-				if (err == rt::ECHILD) {
-				  return;
-				};
-				fmt::printfln("wait4 error: {}", rt::strerror(err))!;
-				return;
-
-			case let pid: rt::pid_t =>
-			  switch (pid) {
-			    case 0 => return;
-					case => yield;
-				};
-		};
-	};
 };
