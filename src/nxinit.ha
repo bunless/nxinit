@@ -7,7 +7,6 @@ use fs;
 use rt;
 
 use src::power;
-use src::processes;
 use src::units;
 
 //temp fix of exec::wait
@@ -48,18 +47,20 @@ export fn main() void = {
   signal::setprocmask(signal::how::BLOCK, &set);
 
   //decrale first task and service
+  let supervisor = units::create_supervisor();
+
   let test_service = units::create_unit(units::kind::SERVICE, "sh", "/bin/sh");
-  units::start(&test_service, set);
+  units::append_unit(&supervisor, test_service);
 
   let test_task = units::create_unit(units::kind::TASK, "ls", "ls");
-  units::start(&test_task, set);
+  units::append_unit(&supervisor, test_task);
 
-  let test_service2 = units::create_unit(units::kind::SERVICE, "sh", "/bin/sh");
-  units::start(&test_service2, set);
+  units::start_all(&supervisor, set);
 
-  fmt::printfln("test_service pid: {}", test_service2.process: int)!;
-  units::finish(&test_service2);
-  fmt::printfln("test_service pid: {}", test_service2.process: int)!;
+  for (let i = 0z; i < len(supervisor.unit_list); i += 1) {
+    fmt::printfln("name: {}, pid: {}", supervisor.unit_list[i].name, supervisor.unit_list[i].process: int)!;
+  };
+
 
   //main loopidk
   for (true) {
@@ -67,7 +68,7 @@ export fn main() void = {
     match (sigwait(&set)) {
       case let sig: signal::sig =>
         switch (sig) {
-          case signal::sig::CHLD => processes::reap();
+          case signal::sig::CHLD => units::reap(&supervisor);
           case signal::sig::USR1 => power::reboot();
           case signal::sig::USR2 => power::poweroff();
           case => yield;
