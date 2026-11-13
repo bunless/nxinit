@@ -1,10 +1,10 @@
 use fmt;
-use unix;
-use unix::signal;
+use fs;
 use os;
 use os::exec;
-use fs;
 use rt;
+use unix;
+use unix::signal;
 
 use src::power;
 use src::units;
@@ -27,56 +27,75 @@ fn sigwait(set: *signal::sigset) (signal::sig | rt::errno) = {
 };
 
 export fn main() void = {
-  //check if pid1
-  if (unix::getpid() != 1) {
-    os::exit(1);
-  };
+	//check if pid1
+	if (unix::getpid() != 1) {
+		os::exit(1);
+	};
 
-  //cd into root
-  match (os::chdir("/")) {
-    case void => yield;
-    case let fs_err: fs::error => fmt::fatalf("Error: {}", fs::strerror(fs_err));
-  };
+	//cd into root
+	match (os::chdir("/")) {
+	case void =>
+		yield;
+	case let fs_err: fs::error =>
+		fmt::fatalf("Error: {}", fs::strerror(fs_err));
+	};
 
-  //set sigset and mask it
-  let set: signal::sigset = signal::newsigset(
-    signal::sig::CHLD,
-    signal::sig::USR1,
-    signal::sig::USR2,
-  );
-  signal::setprocmask(signal::how::BLOCK, &set);
+	//set sigset and mask it
+	let set: signal::sigset = signal::newsigset(
+		signal::sig::CHLD,
+		signal::sig::USR1,
+		signal::sig::USR2,
+	);
+	signal::setprocmask(signal::how::BLOCK, &set);
 
-  //decrale first task and service
-  let supervisor = units::create_supervisor();
+	//decrale first task and service
+	let supervisor = units::create_supervisor();
 
-  let test_service = units::create_unit(units::kind::SERVICE, "sh", "/bin/sh");
-  units::append_unit(&supervisor, test_service);
+	let test_service = units::create_unit(
+		units::kind::SERVICE,
+		"sh",
+		"/bin/sh",
+	);
+	units::append_unit(&supervisor, test_service);
 
-  let test_task = units::create_unit(units::kind::TASK, "ls", "ls");
-  units::append_unit(&supervisor, test_task);
+	let test_task = units::create_unit(
+		units::kind::TASK,
+		"ls",
+		"ls",
+	);
+	units::append_unit(&supervisor, test_task);
 
-  units::start_all(&supervisor, set);
+	units::start_all(&supervisor, set);
 
-  for (let i = 0z; i < len(supervisor.unit_list); i += 1) {
-    fmt::printfln("name: {}, pid: {}", supervisor.unit_list[i].name, supervisor.unit_list[i].process: int)!;
-  };
+	for (let i = 0z; i < len(supervisor.unit_list); i += 1) {
+		fmt::printfln(
+			"name: {}, pid: {}",
+			supervisor.unit_list[i].name,
+			supervisor.unit_list[i].process: int,
+		)!;
+	};
 
-
-  //main loopidk
-  for (true) {
-    //error handling of the permanent fix UHH
-    match (sigwait(&set)) {
-      case let sig: signal::sig =>
-        switch (sig) {
-          case signal::sig::CHLD => units::reap(&supervisor);
-          case signal::sig::USR1 => power::reboot();
-          case signal::sig::USR2 => power::poweroff();
-          case => yield;
-        };
-
-      case let err: rt::errno =>
-        fmt::printfln("sigwait error: {}", rt::strerror(err))!;
-        return;
-    };
-  };
+	//main loopidk
+	for (true) {
+		//error handling of the permanent fix UHH
+		match (sigwait(&set)) {
+		case let sig: signal::sig =>
+			switch (sig) {
+			case signal::sig::CHLD =>
+				units::reap(&supervisor);
+			case signal::sig::USR1 =>
+				power::reboot();
+			case signal::sig::USR2 =>
+				power::poweroff();
+			case =>
+				yield;
+			};
+		case let err: rt::errno =>
+			fmt::printfln(
+				"sigwait error: {}",
+				rt::strerror(err),
+			)!;
+			return;
+		};
+	};
 };
