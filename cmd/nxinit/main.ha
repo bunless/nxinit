@@ -6,8 +6,8 @@ use rt;
 use unix;
 use unix::signal;
 
-use src::power;
-use src::units;
+use internal::power;
+use internal::units;
 
 //temp fix of exec::wait
 fn sigwait(set: *signal::sigset) (signal::sig | rt::errno) = {
